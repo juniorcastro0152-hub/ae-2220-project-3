@@ -74,7 +74,12 @@ class Cosmobee:
         # Controllers
         self.x_pid = PID(Kp=30.0, Ki=0.0, Kd=0.0)
         self.y_pid = PID(Kp=30.0, Ki=0.0, Kd=0.0)
-        self.theta_pid = PID(Kp=1.0, Ki=0.0, Kd=0.0)
+        self.theta_pid = PID(Kp=10.0, Ki=0.0, Kd=0.0)
+
+        # Set the initial setpoints to current velocities
+        self.x_pid.set_setpoint(self.vx)
+        self.y_pid.set_setpoint(self.vy)
+        self.theta_pid.set_setpoint(self.omega)
 
         self.x_control: float = 0.0
         self.y_control: float = 0.0
@@ -164,23 +169,35 @@ class Cosmobee:
         # Calculate the target velocities based on the current position and target position
         # Average velocity to reach the target in dt seconds
         vel_gain = 1.3
+        angular_gain = 1.5
         target_vx = max(min(vel_gain*(target_position[0] - self.x) / self.lookahead_distance, self.max_velocity), -self.max_velocity)
         target_vy = max(min(vel_gain*(target_position[1] - self.y) / self.lookahead_distance, self.max_velocity), -self.max_velocity)
-        target_omega = 0.0  # For simplicity, we want to keep facing "forward" # TODO: improve this
+
+        delta_theta = target_position[3] - self.theta
+        if delta_theta > np.pi:
+            delta_theta -= 2 * np.pi
+        elif delta_theta < -np.pi:
+            delta_theta += 2 * np.pi
+
+        target_omega = max(min(angular_gain*delta_theta, self.max_angular_velocity), -self.max_angular_velocity)
 
         # Update PID controllers
         self.x_pid.set_setpoint(target_vx)
         self.y_pid.set_setpoint(target_vy)
-        self.theta_pid.set_setpoint(target_omega)  # For simplicity, always face "forward" # TODO: improve this
-        self.x_control = self.x_pid.update(self.vx, dt) # thrust in x
-        self.y_control = self.y_pid.update(self.vy, dt) # thrust in y
+        self.theta_pid.set_setpoint(target_omega)
+
+        # Transform the local velocities to global frame for PID update
+        R = self.get_local_to_global_rotation_matrix()
+        global_velocity = R.dot(np.array([self.vx, self.vy]))
+        self.x_control = self.x_pid.update(global_velocity[0], dt) # thrust in x
+        self.y_control = self.y_pid.update(global_velocity[1], dt) # thrust in y
         self.theta_control = self.theta_pid.update(self.omega, dt) # torque in z
 
         # See whether to override controls based on max velocity limits
         # If velocity and x_control have the same sign, we are speeding up
-        if (self.vx * self.x_control > 0) and (abs(self.vx) >= self.max_velocity):
+        if (global_velocity[0] * self.x_control > 0) and (abs(global_velocity[0]) >= self.max_velocity):
             self.x_control = 0.0
-        if (self.vy * self.y_control > 0) and (abs(self.vy) >= self.max_velocity):
+        if (global_velocity[1] * self.y_control > 0) and (abs(global_velocity[1]) >= self.max_velocity):
             self.y_control = 0.0
         if (self.omega * self.theta_control > 0) and (abs(self.omega) >= self.max_angular_velocity):
             self.theta_control = 0.0
@@ -200,13 +217,21 @@ class Cosmobee:
         self.vy += total_thrust_y / self.mass * dt
         self.omega += self.theta_control / self.Izz * dt
 
-        self.x += self.vx * dt
-        self.y += self.vy * dt
+        # These are always in global frame
         self.theta += self.omega * dt
+        # Normalize theta to be within 0 to 2pi
+        self.theta = self.theta % (2 * np.pi)
+        
+        # Update the global position
+        R = self.get_local_to_global_rotation_matrix()
+        global_velocity = R.dot(np.array([self.vx, self.vy]))
+        self.x += global_velocity[0] * dt
+        self.y += global_velocity[1] * dt
 
     def reached_goal(self) -> bool:
         """Return True if the Cosmobee has reached the end of its trajectory."""
         if self.trajectory is None:
             return False
         return self.current_target_index >= len(self.trajectory) - 1 and np.linalg.norm(
-            np.array([self.x, self.y]) - self.trajectory[-1, :2]) < 0.01
+            np.array([self.x, self.y]) - self.trajectory[-1, :2]) < 0.01 and abs(self.theta - self.trajectory[-1, 3]) < 0.01 and \
+            abs(self.vx) < 0.01 and abs(self.vy) < 0.01 and abs(self.omega) < 0.01
