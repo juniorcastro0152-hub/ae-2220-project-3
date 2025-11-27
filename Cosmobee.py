@@ -76,12 +76,12 @@ class Cosmobee:
 
         # Set max vehicle performance limits for safety
         self.max_velocity: float = 1 # m/s
-        self.max_angular_velocity: float = np.pi / 3.0 # rad/s
+        self.max_angular_velocity: float = np.pi # rad/s
 
         # Controllers
-        self.x_pid = PID(Kp=30.0, Ki=0.0, Kd=0.0)
-        self.y_pid = PID(Kp=30.0, Ki=0.0, Kd=0.0)
-        self.theta_pid = PID(Kp=10.0, Ki=0.0, Kd=0.0)
+        self.x_pid = PID(Kp=100.0, Ki=0.0, Kd=0.0)
+        self.y_pid = PID(Kp=100.0, Ki=0.0, Kd=0.0)
+        self.theta_pid = PID(Kp=40.0, Ki=0.0, Kd=0.0)
 
         # Set the initial setpoints to current velocities
         self.x_pid.set_setpoint(self.vx)
@@ -94,7 +94,7 @@ class Cosmobee:
 
         # Trajectory and pure pursuit algorithm
         self.trajectory = None
-        self.lookahead_distance: float = 1.0 # meters
+        self.lookahead_distance: float = 0.25 # meters
         self.current_target_index: int = 0
 
         # Individual thruster properties
@@ -176,8 +176,8 @@ class Cosmobee:
 
         # Calculate the target velocities based on the current position and target position
         # Average velocity to reach the target in dt seconds
-        vel_gain = 1.3
-        angular_gain = 1.5
+        vel_gain = 0.6
+        angular_gain = 1.3
         target_vx = max(min(vel_gain*(target_position[0] - self.x) / self.lookahead_distance, self.max_velocity), -self.max_velocity)
         target_vy = max(min(vel_gain*(target_position[1] - self.y) / self.lookahead_distance, self.max_velocity), -self.max_velocity)
 
@@ -244,6 +244,9 @@ class Cosmobee:
         """Return True if the Cosmobee has reached the end of its trajectory."""
         if self.trajectory is None:
             return False
+        theta_diff = abs(self.theta - self.trajectory[-1, 3])
+        if theta_diff > np.pi:
+            theta_diff = abs(theta_diff - 2 * np.pi)
         return self.current_target_index >= len(self.trajectory) - 1 and np.linalg.norm(
-            np.array([self.x, self.y]) - self.trajectory[-1, :2]) < 0.01 and abs(self.theta - self.trajectory[-1, 3]) < 0.01 and \
+            np.array([self.x, self.y]) - self.trajectory[-1, :2]) % (2 * np.pi) < 0.01 and theta_diff < 0.01 and \
             abs(self.vx) < 0.01 and abs(self.vy) < 0.01 and abs(self.omega) < 0.01

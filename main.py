@@ -5,18 +5,15 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from matplotlib.patches import Wedge, FancyArrowPatch
-import matplotlib as mpl
-import imageio_ffmpeg as ffmpeg
 import time
-
-mpl.rcParams['animation.ffmpeg_path'] = ffmpeg.get_ffmpeg_exe()
+import argparse
 
 if __name__ == "__main__":
-
     # Read arguments (if any) from command line
-    import argparse
     parser = argparse.ArgumentParser(description="Simulate Cosmobee trajectory")
     parser.add_argument('--save', action='store_true', help="Save the animation to MP4")
+    parser.add_argument('--fps', type=int, default=30, help="Frames per second for the animation")
+    parser.add_argument('--file', type=str, default="simulation.mp4", help="Output filename for the saved animation")
     parser.add_argument('--only-animation', action='store_true', help="Only shows the animation, no additional plots")
     args = parser.parse_args()
 
@@ -25,8 +22,7 @@ if __name__ == "__main__":
     
     # Simulation
     t = 0.0
-    fps = 30
-    dt = 1.0 / fps
+    dt = 1.0 / args.fps
     x_history = []
     y_history = []
     theta_history = []
@@ -44,9 +40,31 @@ if __name__ == "__main__":
     t_history = []
 
     # Make a trajectory
-    x_traj = np.linspace(0, 10, 1000)
-    y_traj = 1 * x_traj * np.sin(1 * x_traj)
-    z_traj = np.zeros(1000)
+    # Path 1: A rectangular path
+    start_point = (0, 0)
+    corner_bl = (1.5, 0)
+    corner_tl = (1.5, 3)
+    corner_tr = (8.5, 3)
+    corner_br = (8.5, 0)
+    end_point = (10, 0)
+    num_points_segment = 100
+    x1 = np.linspace(start_point[0], corner_bl[0], num_points_segment)
+    y1 = np.full_like(x1, start_point[1])
+    x2 = np.full(num_points_segment, corner_bl[0])
+    y2 = np.linspace(corner_bl[1], corner_tl[1], num_points_segment)
+    x3 = np.linspace(corner_tl[0], corner_tr[0], num_points_segment)
+    y3 = np.full_like(x3, corner_tl[1])
+    x4 = np.full(num_points_segment, corner_tr[0])
+    y4 = np.linspace(corner_tr[1], corner_br[1], num_points_segment)
+    x5 = np.linspace(corner_br[0], end_point[0], num_points_segment)
+    y5 = np.full_like(x5, corner_br[1])
+    x_traj = np.concatenate((x1, x2, x3, x4, x5))
+    y_traj = np.concatenate((y1, y2, y3, y4, y5))
+
+    # Path 2: A wavy line
+    # x_traj = np.linspace(0, 10, 1000)
+    # y_traj = 1 * x_traj * np.sin(x_traj)
+    z_traj = np.zeros_like(x_traj)
     # Make theta_traj to be the angle of the tangent to the trajectory
     dx = np.gradient(x_traj)
     dy = np.gradient(y_traj)
@@ -93,12 +111,12 @@ if __name__ == "__main__":
 
     # Plot a box showing the Cosmobee
     bee_box, = ax[1].plot([], [], 'k-')
-    bee_vector = ax[1].plot([], [], 'r-', lw=2)[0]
     # Local (close-up) desired trajectory relative to the Cosmobee body frame
     local_traj_line, = ax[1].plot([], [], 'r--', label="Desired Trajectory", alpha=0.2)
     # Local (close-up) actual trajectory (vehicle history) shown in the same frame
     local_actual_line, = ax[1].plot([], [], 'b-', label="Actual Trajectory", lw=2)
     target_vector = ax[1].plot([], [], 'g-', label="Target Heading", lw=2)[0]
+    bee_vector = ax[1].plot([], [], 'r-', label="Current Heading", lw=2)[0]
     local_target_point, = ax[1].plot([], [], 'go', label="Current Target", markersize=6)
     # Create thruster arrows using FancyArrowPatch
     thruster_arrows = []
@@ -145,23 +163,10 @@ if __name__ == "__main__":
     ax[1].legend()
 
     # Mark remaining animated artists
-    for a in [line, point, target_point, local_traj_line, local_actual_line, local_target_point, bee_box, bee_vector, text, text2, target_vector, *thruster_arrows, *wheel_wedges]:
+    for a in [line, target_point, point, local_traj_line, local_actual_line, local_target_point, bee_box, text, text2, target_vector, bee_vector, *thruster_arrows, *wheel_wedges]:
         a.set_animated(True)
 
     frame_skip = 1 # Skip frames for faster animation if needed, set to 1 to show all frames
-    def init():
-        line.set_data([], [])
-        point.set_data([], [])
-        target_point.set_data([], [])
-        local_traj_line.set_data([], [])
-        local_actual_line.set_data([], [])
-        local_target_point.set_data([], [])
-        bee_box.set_data([], [])
-        bee_vector.set_data([], [])
-        # Initialize arrows at zero length
-        for arr in thruster_arrows:
-            arr.set_positions((0, 0), (0, 0))
-        return line, point, target_point, local_traj_line, local_actual_line, local_target_point, bee_box, bee_vector, target_vector, *thruster_arrows, *wheel_wedges, text, text2
     def update(frame):
         frame *= frame_skip
         line.set_data(x_history[:frame], y_history[:frame])
@@ -179,11 +184,11 @@ if __name__ == "__main__":
         box_rotated = rot_matrix @ np.vstack((box_x, box_y))
         bee_box.set_data(box_rotated[0, :],
                          box_rotated[1, :])
-        bee_vector.set_data([0, box_size * np.cos(angle)],
-                            [0, box_size * np.sin(angle)])
         target_vector.set_data([0, box_size * np.cos(target_history[frame][3])],
                                [0, box_size * np.sin(target_history[frame][3])])
-        
+        bee_vector.set_data([0, box_size * np.cos(angle)],
+                    [0, box_size * np.sin(angle)])
+
         # Draw desired trajectory in local frame
         curr_x = x_history[frame]
         curr_y = y_history[frame]
@@ -245,11 +250,9 @@ if __name__ == "__main__":
             w.set_theta1(i * 90 + rot_deg)
             w.set_theta2(i * 90 + rot_deg + 90)
         text2.set_text('Cosmobee Control, t={:.2f}s'.format(t_history[frame]))
-        return line, point, target_point, local_traj_line, local_actual_line, local_target_point, bee_box, bee_vector, target_vector, *thruster_arrows, *wheel_wedges, text, text2
-    # Draw the canvas once so that blitting works
-    fig.canvas.draw()
+        return line, target_point, point, local_traj_line, local_actual_line, local_target_point, bee_box, target_vector, bee_vector, *thruster_arrows, *wheel_wedges, text, text2
     ani = animation.FuncAnimation(fig, update, frames=len(t_history) // frame_skip,
-                                    init_func=init, blit=True, interval=1, repeat_delay=2000)
+                                    blit=True, interval=1, repeat_delay=2000)
 
     # If --only-animation argument is provided, show only the animation and exit
     if args.only_animation:
@@ -302,20 +305,11 @@ if __name__ == "__main__":
 
     # Save the animation to MP4 if --save argument is provided
     if args.save:
-        # Attempt to save animation to MP4 (overwrite if exists)
-        try:
-            print("Saving animation to MP4...")
-            start_time = time.time()
-            out_path = 'simulation.mp4'
-            if os.path.exists(out_path):
-                os.remove(out_path)
-            writer = animation.FFMpegWriter(fps=fps, metadata=dict(artist='Cosmobee'), bitrate=-1, codec='h264')
-            ani.save(out_path, writer=writer)
-            print(f"Animation saved to {out_path}")
-            end_time = time.time()
-            print(f"Encoding took {end_time - start_time:.2f} seconds")
-        except Exception as e:
-            print("Could not save animation to mp4:", e)
-    # If not saving, just show the plots
-    else:
-        plt.show()
+        if args.file:
+            output_filename = args.file
+        print(f"Saving animation to {output_filename}...")
+        start_time = time.time()
+        ani.save(output_filename, writer='ffmpeg', fps=args.fps)
+        end_time = time.time()
+        print(f"Animation saved to {output_filename} in {end_time - start_time:.2f} seconds.")
+    plt.show()
