@@ -97,7 +97,7 @@ class Cosmobee:
         self.y_reaction_wheel.set_torque(torque[1])
         self.z_reaction_wheel.set_torque(torque[2])
 
-    def reached_orientation(self, attitude_tolerance: float = 0.005, rate_tolerance: float = 0.005) -> bool:
+    def reached_orientation(self, attitude_tolerance: float = 0.001, rate_tolerance: float = 0.001) -> bool:
         """Check if the Cosmobee has reached the target orientation within tolerances."""
         orientation_error = self.orientation.conjugate() * self.target_orientation
 
