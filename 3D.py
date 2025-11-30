@@ -28,15 +28,15 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # Generate a random starting orientation
-    starting_euler = np.radians(np.random.uniform(low=-180.0, high=180.0, size=(3,)))
+    starting_euler = np.radians(np.array([np.random.uniform(low=-180.0, high=180.0), np.random.uniform(low=-90.0, high=90.0), np.random.uniform(low=-180.0, high=180.0)]))
     roll, pitch, yaw = starting_euler[0], starting_euler[1], starting_euler[2]
     # Generate a starting angular velocity
-    starting_angular_velocity = np.radians(np.random.uniform(low=-100.0, high=100.0, size=(3,)))
+    starting_angular_velocity = np.radians(np.random.uniform(low=0.0, high=0.0, size=(3,)))
     roll_rate, pitch_rate, yaw_rate = starting_angular_velocity[0], starting_angular_velocity[1], starting_angular_velocity[2]
 
     # Create a Cosmobee instance
     bee = Cosmobee(yaw, pitch, roll, yaw_rate, pitch_rate, roll_rate)
-    bee.set_target_orientation(0.0, 0.0, 0.0)
+    bee.set_target_orientation(0.0, 0.0, 0.0)  # Target orientation is aligned with global frame
     
     # Simulation
     t = 0.0
@@ -54,7 +54,6 @@ if __name__ == "__main__":
         z_rw_history.append(bee.z_reaction_wheel.angular_velocity)
         t_history.append(t)
         bee.update(dt=dt)
-        print(bee) if t < dt else None
         t += dt
 
     print(f"Simulation completed in {t:.2f} seconds of simulated time over {len(t_history)} steps.")

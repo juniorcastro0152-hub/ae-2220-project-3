@@ -83,7 +83,7 @@ class Cosmobee:
         self.y_reaction_wheel.set_torque(torque[1])
         self.z_reaction_wheel.set_torque(torque[2])
 
-    def reached_orientation(self, attitude_tolerance: float = 0.01, rate_tolerance: float = 0.01) -> bool:
+    def reached_orientation(self, attitude_tolerance: float = 0.005, rate_tolerance: float = 0.005) -> bool:
         """Check if the Cosmobee has reached the target orientation within tolerances."""
         orientation_error = self.target_orientation * self.orientation.conjugate()
 
@@ -131,7 +131,7 @@ class Cosmobee:
         # Set control torque based on actual reaction wheel torques (respects max torque limits)
         control_torque = np.array([self.x_reaction_wheel.torque, self.y_reaction_wheel.torque, self.z_reaction_wheel.torque])
 
-        print(f"Orientation error: {orientation_error}, \tRate error: {rate_error}, \tControl torque: {control_torque}")
+        # print(f"Orientation error: {orientation_error}, \tRate error: {rate_error}, \tControl torque: {control_torque}")
 
         # Update reaction wheels
         self.x_reaction_wheel.update(dt)
