@@ -156,17 +156,15 @@ class Cosmobee:
         self.theta_pid.set_setpoint(target_omega)
 
         # Transform the local velocities to global frame for PID update
-        R = self.get_local_to_global_rotation_matrix()
-        global_velocity = R.dot(np.array([self.vx, self.vy]))
-        self.x_control = self.x_pid.update(dt, global_velocity[0]) # thrust in x
-        self.y_control = self.y_pid.update(dt, global_velocity[1]) # thrust in y
+        self.x_control = self.x_pid.update(dt, self.vx) # thrust in x
+        self.y_control = self.y_pid.update(dt, self.vy) # thrust in y
         self.theta_control = self.theta_pid.update(dt, self.omega) # torque in z
 
         # See whether to override controls based on max velocity limits
         # If velocity and x_control have the same sign, we are speeding up
-        if (global_velocity[0] * self.x_control > 0) and (abs(global_velocity[0]) >= self.max_velocity):
+        if (self.vx * self.x_control > 0) and (abs(self.vx) >= self.max_velocity):
             self.x_control = 0.0
-        if (global_velocity[1] * self.y_control > 0) and (abs(global_velocity[1]) >= self.max_velocity):
+        if (self.vy * self.y_control > 0) and (abs(self.vy) >= self.max_velocity):
             self.y_control = 0.0
         if (self.omega * self.theta_control > 0) and (abs(self.omega) >= self.max_angular_velocity):
             self.theta_control = 0.0
