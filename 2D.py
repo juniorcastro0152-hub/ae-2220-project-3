@@ -311,6 +311,33 @@ if __name__ == "__main__":
     plt.title('Angular Control Over Time (Rotational)')
     plt.grid()
 
+    plt.figure()
+    plt.subplot(2, 1, 1)
+    distances = []
+    for xi, yi in zip(x_history, y_history):
+        dists = np.linalg.norm(trajectory[:, :2] - np.array([xi, yi]), axis=1)
+        min_dist = np.min(dists)
+        distances.append(min_dist)
+    plt.plot(t_history, distances, label='Position Error', alpha=0.6)
+    plt.xlabel('Time (s)')
+    plt.ylabel('Distance to Trajectory (m)')
+    plt.legend(loc=1)
+    plt.title('Position Error Over Time')
+    plt.grid()
+    plt.subplot(2, 1, 2)
+    wheel_omega_history = np.array(wheel_omega_history)
+    wheel_angular_momentum = bee.reaction_wheel.inertia * wheel_omega_history
+    cosmobee_angular_momentum = bee.Izz * np.array(omega_history)
+    total_angular_momentum = np.zeros_like(cosmobee_angular_momentum)
+    plt.plot(t_history, wheel_angular_momentum, label='Reaction Wheel Angular Momentum', alpha=0.6)
+    plt.plot(t_history, cosmobee_angular_momentum, label='Cosmobee Angular Momentum', alpha=0.6)
+    plt.plot(t_history, total_angular_momentum, label='Total Angular Momentum', alpha=0.6)
+    plt.xlabel('Time (s)')
+    plt.ylabel('Angular Momentum (kg·m²/s)')
+    plt.legend(loc=1)
+    plt.title('Angular Momentum Over Time')
+    plt.grid()
+
     # Save the animation to MP4 if --save argument is provided
     if args.save:
         output_filename = args.save
