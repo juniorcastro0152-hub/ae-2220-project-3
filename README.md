@@ -1,6 +1,4 @@
-# Cosmobee
 
-## Installation
 
 This project uses Python-1.0.1. Pip is the preferred dependency manager for this project
 
@@ -8,7 +6,7 @@ This project uses Python-1.0.1. Pip is the preferred dependency manager for this
 pip install -r requirements.txt
 ```
 
-## Usage
+
 
 Simply run the below command to run the simple 2D Cosmobee simulation.
 
