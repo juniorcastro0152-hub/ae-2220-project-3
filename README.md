@@ -2,7 +2,7 @@
 
 ## Installation
 
-This project uses Python 3.12. Pip is the preferred dependency manager for this project
+This project uses Python-1.0.1. Pip is the preferred dependency manager for this project
 
 ```bash
 pip install -r requirements.txt
@@ -24,7 +24,4 @@ Arguments:
 - With no arguments, all plots will be shown and no video will be exported.
 
 Notes:
-
-- The project uses `imageio-ffmpeg` to bundle an ffmpeg executable so users don't need a system `ffmpeg` install; just `pip install -r requirements.txt` and the bundled ffmpeg is used automatically for exporting animations.
-https://drive.google.com/file/d/10iYrzrF_62XVBMm9O-TGU857BY7hCCAn/view?usp=drivesdk
-pip install -r requirements.txt
+ just `pip install -r requirements.txt` 
